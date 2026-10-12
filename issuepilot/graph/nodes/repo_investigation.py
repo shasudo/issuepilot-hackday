@@ -6,6 +6,7 @@ from issuepilot.config import Settings
 from issuepilot.llm.factory import build_chat_model
 from issuepilot.llm.prompts import load_prompt
 from issuepilot.llm.retry import invoke_with_retry
+from issuepilot.llm.schema import flatten_schema
 from issuepilot.models.repo_context import RepoEvidence
 from issuepilot.observability.trace_store import TraceStore, trace
 
@@ -18,11 +19,11 @@ MAX_TREE_PATHS = 1500
 class StructuredChatModel(Protocol):
     """What this node needs from a model — tests inject a stub."""
 
-    def with_structured_output(self, schema: type[RepoEvidence]) -> _StructuredInvoker: ...
+    def with_structured_output(self, schema: dict) -> _StructuredInvoker: ...
 
 
 class _StructuredInvoker(Protocol):
-    def invoke(self, messages: list[tuple[str, str]]) -> RepoEvidence: ...
+    def invoke(self, messages: list[tuple[str, str]]) -> dict: ...
 
 
 def investigate_repo(
@@ -35,7 +36,7 @@ def investigate_repo(
 ) -> RepoEvidence:
     prompt = load_prompt("repo_investigation")
     model = chat_model or build_chat_model(settings)
-    structured_model = model.with_structured_output(RepoEvidence)
+    structured_model = model.with_structured_output(flatten_schema(RepoEvidence))
 
     shown = tree_paths[:MAX_TREE_PATHS]
     tree_text = "\n".join(shown)
@@ -46,5 +47,7 @@ def investigate_repo(
     messages = [("system", prompt.system), ("human", user_message)]
     if trace_store is not None:
         with trace(trace_store, "repo_investigation", prompt.version):
-            return invoke_with_retry(structured_model, messages)
-    return invoke_with_retry(structured_model, messages)
+            raw = invoke_with_retry(structured_model, messages)
+    else:
+        raw = invoke_with_retry(structured_model, messages)
+    return RepoEvidence(**raw)

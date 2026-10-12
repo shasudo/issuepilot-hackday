@@ -7,9 +7,9 @@ class StubInvoker:
         self.evidence = evidence
         self.messages: list[tuple[str, str]] | None = None
 
-    def invoke(self, messages: list[tuple[str, str]]) -> RepoEvidence:
+    def invoke(self, messages: list[tuple[str, str]]) -> dict:
         self.messages = messages
-        return self.evidence
+        return self.evidence.model_dump()
 
 
 class StubModel:
@@ -17,7 +17,7 @@ class StubModel:
         self.invoker = StubInvoker(evidence)
 
     def with_structured_output(self, schema) -> StubInvoker:
-        assert schema is RepoEvidence
+        assert isinstance(schema, dict)
         return self.invoker
 
 

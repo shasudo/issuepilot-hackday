@@ -8,6 +8,7 @@ from issuepilot.github.models import Issue
 from issuepilot.llm.factory import build_chat_model
 from issuepilot.llm.prompts import load_prompt
 from issuepilot.llm.retry import invoke_with_retry
+from issuepilot.llm.schema import flatten_schema
 from issuepilot.models.issue_context import IssueContext, IssueContextAnalysis
 from issuepilot.observability.trace_store import TraceStore, trace
 
@@ -20,11 +21,11 @@ _REFERENCE_RE = re.compile(r"(?<!\w)#(\d+)")
 class StructuredChatModel(Protocol):
     """What this node needs from a model — tests inject a stub."""
 
-    def with_structured_output(self, schema: type[IssueContextAnalysis]) -> _StructuredInvoker: ...
+    def with_structured_output(self, schema: dict) -> _StructuredInvoker: ...
 
 
 class _StructuredInvoker(Protocol):
-    def invoke(self, messages: list[tuple[str, str]]) -> IssueContextAnalysis: ...
+    def invoke(self, messages: list[tuple[str, str]]) -> dict: ...
 
 
 def extract_referenced_numbers(*texts: str | None, exclude: int | None = None) -> list[int]:
@@ -54,7 +55,7 @@ def investigate_issue(
 ) -> IssueContext:
     prompt = load_prompt("issue_investigation")
     model = chat_model or build_chat_model(settings)
-    structured_model = model.with_structured_output(IssueContextAnalysis)
+    structured_model = model.with_structured_output(flatten_schema(IssueContextAnalysis))
 
     comments_text = "\n\n".join(f"@{c.author}: {c.body}" for c in issue.comments)
     user_message = (
@@ -67,9 +68,10 @@ def investigate_issue(
     messages = [("system", prompt.system), ("human", user_message)]
     if trace_store is not None:
         with trace(trace_store, "issue_investigation", prompt.version):
-            analysis = invoke_with_retry(structured_model, messages)
+            raw = invoke_with_retry(structured_model, messages)
     else:
-        analysis = invoke_with_retry(structured_model, messages)
+        raw = invoke_with_retry(structured_model, messages)
+    analysis = IssueContextAnalysis(**raw)
 
     referenced_numbers = extract_referenced_numbers(issue.body, comments_text, exclude=issue.number)
     return IssueContext(analysis=analysis, referenced_numbers=referenced_numbers)

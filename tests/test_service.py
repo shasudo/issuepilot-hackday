@@ -26,7 +26,7 @@ class StubInvoker:
         self.analysis = analysis
 
     def invoke(self, messages):
-        return self.analysis
+        return self.analysis.model_dump()
 
 
 class StubModel:
@@ -34,17 +34,27 @@ class StubModel:
         self.analysis = analysis
 
     def with_structured_output(self, schema):
+        assert isinstance(schema, dict)
         return StubInvoker(self.analysis)
 
 
 class SchemaStub:
-    """Returns a different canned analysis per schema name."""
+    """Returns a different canned analysis per schema shape."""
 
     def __init__(self, by_name: dict) -> None:
         self.by_name = by_name
 
     def with_structured_output(self, schema):
-        return StubInvoker(self.by_name[schema.__name__])
+        props = schema.get("properties", {})
+        if "ranked_paths" in props:
+            key = "RepoEvidence"
+        elif "notes" in props:
+            key = "HistoryEvidence"
+        elif "review_checklist" in props:
+            key = "PRReviewAnalysis"
+        else:
+            key = "IssueContextAnalysis"
+        return StubInvoker(self.by_name[key])
 
 
 class FakeGateway:

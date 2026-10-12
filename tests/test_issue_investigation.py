@@ -33,9 +33,9 @@ class StubInvoker:
         self.analysis = analysis
         self.messages: list[tuple[str, str]] | None = None
 
-    def invoke(self, messages: list[tuple[str, str]]) -> IssueContextAnalysis:
+    def invoke(self, messages: list[tuple[str, str]]) -> dict:
         self.messages = messages
-        return self.analysis
+        return self.analysis.model_dump()
 
 
 class StubModel:
@@ -43,7 +43,7 @@ class StubModel:
         self.invoker = StubInvoker(analysis)
 
     def with_structured_output(self, schema) -> StubInvoker:
-        assert schema is IssueContextAnalysis
+        assert isinstance(schema, dict)
         return self.invoker
 
 
