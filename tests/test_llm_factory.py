@@ -54,3 +54,36 @@ def test_anthropic_provider_builds(tmp_path) -> None:
         tmp_path, llm_provider="anthropic", anthropic_api_key="k", anthropic_model="test-model"
     )
     assert build_chat_model(settings).model == "test-model"
+
+
+def test_openrouter_provider_builds(tmp_path) -> None:
+    settings = make_settings(
+        tmp_path,
+        llm_provider="openrouter",
+        openrouter_api_key="k",
+        openrouter_model="google/gemma-4-26b-a4b-it:free",
+    )
+    model = build_chat_model(settings)
+    assert model.model == "google/gemma-4-26b-a4b-it:free"
+    assert "openrouter.ai" in str(model.openai_api_base)
+
+
+def test_openrouter_requires_key_and_model(tmp_path) -> None:
+    with pytest.raises(ValueError, match="OPENROUTER_API_KEY"):
+        build_chat_model(
+            make_settings(
+                tmp_path,
+                llm_provider="openrouter",
+                openrouter_model="m",
+                openrouter_api_key=None,
+            )
+        )
+    with pytest.raises(ValueError, match="OPENROUTER_MODEL"):
+        build_chat_model(
+            make_settings(
+                tmp_path,
+                llm_provider="openrouter",
+                openrouter_api_key="k",
+                openrouter_model=None,
+            )
+        )

@@ -45,6 +45,24 @@ def build_chat_model(settings: Settings | None = None, *, temperature: float = 0
             timeout=120.0,
         )
 
+    if settings.llm_provider == "openrouter":
+        if not settings.openrouter_api_key:
+            raise ValueError("OPENROUTER_API_KEY is required when LLM_PROVIDER=openrouter")
+        if not settings.openrouter_model:
+            raise ValueError("OPENROUTER_MODEL is required when LLM_PROVIDER=openrouter")
+        from langchain_openai import ChatOpenAI
+
+        # OpenRouter is OpenAI-compatible; the model ID selects the backend
+        # (e.g. google/gemma-4-26b-a4b-it:free). No thinking controls: they
+        # are Gemini-API-specific and must not leak into this branch.
+        return ChatOpenAI(
+            model=settings.openrouter_model,
+            api_key=settings.openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1",
+            temperature=temperature,
+            timeout=120.0,
+        )
+
     if settings.llm_provider == "google":
         if not settings.google_api_key:
             raise ValueError("GOOGLE_API_KEY is required when LLM_PROVIDER=google")
