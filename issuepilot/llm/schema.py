@@ -57,5 +57,13 @@ def bind_structured(model, schema: dict):
     The method is explicit (never the provider default): OpenAI and
     Anthropic default to function calling, which requires a top-level
     title that our Gemma-safe stripped schemas deliberately omit.
+    OpenAI-shaped models (including OpenRouter) additionally need the
+    {"name", "schema"} wrapper; Google/Anthropic take the raw dict.
     """
-    return model.with_structured_output(schema, method="json_schema")
+    from langchain_openai import ChatOpenAI
+
+    if isinstance(model, ChatOpenAI):
+        payload = {"name": "structured_response", "schema": schema, "strict": False}
+    else:
+        payload = schema
+    return model.with_structured_output(payload, method="json_schema")

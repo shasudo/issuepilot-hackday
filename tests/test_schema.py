@@ -28,6 +28,36 @@ def test_flat_schema_keeps_nested_shape() -> None:
     assert set(flat["required"]) >= {"summary", "reasoning", "dimension_scores"}
 
 
+class RecordingModel:
+    def __init__(self) -> None:
+        self.calls: list = []
+
+    def with_structured_output(self, schema, **kwargs):
+        self.calls.append((schema, kwargs))
+        return "bound"
+
+
+def test_bind_structured_wraps_for_openai_models() -> None:
+    from langchain_openai import ChatOpenAI
+
+    from issuepilot.llm.schema import bind_structured
+
+    model = ChatOpenAI(model="x", api_key="k")
+    bound = bind_structured(model, {"type": "object", "properties": {}})
+    assert bound is not None  # binding builds locally; no network involved
+
+
+def test_bind_structured_passes_raw_dict_through() -> None:
+    from issuepilot.llm.schema import bind_structured
+
+    model = RecordingModel()
+    schema = {"type": "object", "properties": {"a": {"type": "string"}}}
+    assert bind_structured(model, schema) == "bound"
+    sent, kwargs = model.calls[0]
+    assert sent == schema
+    assert kwargs == {"method": "json_schema"}
+
+
 def test_flat_schema_round_trips() -> None:
     payload = {
         "summary": "s",
