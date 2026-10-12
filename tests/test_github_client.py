@@ -194,6 +194,15 @@ def test_persistent_server_error(client) -> None:
         client.get_issue("o", "r", 1)
 
 
+def test_stale_cache_served_when_api_down(client, monkeypatch) -> None:
+    client._cache.put("https://x/issues/1", '"v1"', '{"title": "Cached"}')
+    monkeypatch.setattr(client, "_cache_key", lambda *a: "https://x/issues/1")
+    monkeypatch.setattr(
+        client, "_send", lambda *a: (_ for _ in ()).throw(GitHubAPIError(502, "down"))
+    )
+    assert client._get("/repos/o/r/issues/1") == {"title": "Cached"}
+
+
 @respx.mock
 def test_list_repo_tree_filters_blobs(client) -> None:
     respx.get(f"{API}/repos/o/r/git/trees/main", params={"recursive": "1"}).mock(

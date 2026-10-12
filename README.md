@@ -92,11 +92,20 @@ uv run pytest -q
 
 Profiles: `profiles/beginner-python.yaml`, `profiles/advanced-web.yaml`.
 
+## Agent Skill
+
+`issue-triage/SKILL.md` packages the flow as a reusable Agent Skill (spec-compliant
+frontmatter, CLI wrapper script, profile reference) so any agent can triage links.
+
+## Demo
+
+Rehearsed 2-minute script + pre-flight checklist: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
+
 ## Project Status
 
-- M0–M4 (done): scaffold, GitHub layer + resolver, issue/PR analysis + fit, repo/org
-  flows, evidence agents, LangGraph orchestration, 4-tab web UI, markdown export
-- M5 (next): demo lock, Agent Skill wrapper, submission
+- M0–M5 (done): scaffold, GitHub layer + resolver, issue/PR analysis + fit, repo/org
+  flows, evidence agents, LangGraph orchestration, 4-tab web UI, markdown export,
+  skill wrapper, demo lock
 
 ## Team Members
 

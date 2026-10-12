@@ -159,7 +159,12 @@ class GitHubClient:
         cached = self._cache.get(cache_key)
         headers = {"If-None-Match": cached.etag} if cached and cached.etag else {}
 
-        response = self._send(path, params, headers)
+        try:
+            response = self._send(path, params, headers)
+        except GitHubAPIError:
+            if cached is not None:
+                return json.loads(cached.body)  # stale beats dead on event WiFi
+            raise
 
         if response.status_code == 304 and cached:
             return json.loads(cached.body)
@@ -183,7 +188,13 @@ class GitHubClient:
             cached = self._cache.get(cache_key)
             headers = {"If-None-Match": cached.etag} if cached and cached.etag else {}
 
-            response = self._send(next_target, next_params, headers)
+            try:
+                response = self._send(next_target, next_params, headers)
+            except GitHubAPIError:
+                if cached is not None:
+                    yield from json.loads(cached.body)  # stale beats dead on event WiFi
+                    return
+                raise
 
             if response.status_code == 304 and cached:
                 body = json.loads(cached.body)
