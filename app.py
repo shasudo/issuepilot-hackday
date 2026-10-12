@@ -157,6 +157,13 @@ def _render_org(report: OrgReport) -> None:
         st.caption(f"{pick.difficulty} · {pick.fit.score}/100 {pick.fit.verdict}")
 
 
+def _load_seed(url: str) -> None:
+    """Seed-button callback: runs before widgets exist, so assignment is legal."""
+    st.session_state.link = url
+    st.session_state.run = True
+    st.session_state.just_loaded = True
+
+
 def _analyze_tab(profile: UserProfile) -> None:
     st.caption("Paste any GitHub issue, PR, repo, or org link. Get a card tuned to your profile.")
 
@@ -168,20 +175,11 @@ def _analyze_tab(profile: UserProfile) -> None:
 
     seed_col_a, seed_col_b, seed_col_c, go_col = st.columns([1, 1, 1, 2])
     with seed_col_a:
-        if st.button("Seeded issue"):
-            st.session_state.link = SEED_ISSUE
-            st.session_state.run = True
-            st.rerun()
+        st.button("Seeded issue", on_click=_load_seed, args=(SEED_ISSUE,))
     with seed_col_b:
-        if st.button("Seeded PR"):
-            st.session_state.link = SEED_PR
-            st.session_state.run = True
-            st.rerun()
+        st.button("Seeded PR", on_click=_load_seed, args=(SEED_PR,))
     with seed_col_c:
-        if st.button("Seeded repo"):
-            st.session_state.link = SEED_REPO
-            st.session_state.run = True
-            st.rerun()
+        st.button("Seeded repo", on_click=_load_seed, args=(SEED_REPO,))
     with go_col:
         go = st.button("Analyze", type="primary")
 
@@ -320,10 +318,14 @@ def _boards_tab(profile: UserProfile) -> None:
     st.subheader("Drill down")
     st.caption("Pick one to open its full card in the Analyze tab.")
     for pick in picks:
-        if st.button(f"Analyze {pick.repo}#{pick.number}", key=f"drill-{pick.repo}-{pick.number}"):
-            st.session_state.link = pick.url
-            st.session_state.run = True
-            st.success("Loaded — switch to the Analyze tab.")
+        st.button(
+            f"Analyze {pick.repo}#{pick.number}",
+            key=f"drill-{pick.repo}-{pick.number}",
+            on_click=_load_seed,
+            args=(pick.url,),
+        )
+    if st.session_state.pop("just_loaded", False):
+        st.success("Loaded — switch to the Analyze tab for the full card.")
 
 
 def _export_tab() -> None:
