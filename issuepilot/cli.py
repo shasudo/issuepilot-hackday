@@ -76,6 +76,9 @@ def analyze(
     except (GitHubAPIError, UnsupportedLinkError, ValueError) as exc:
         console.print(f"[red]error:[/red] {exc}")
         raise typer.Exit(1)
+    except Exception as exc:  # model/API failures stay readable, never a traceback wall
+        console.print(f"[red]error:[/red] analysis failed: {exc}")
+        raise typer.Exit(1)
 
     if isinstance(report, RepoReport):
         _render_repo(report)
@@ -127,6 +130,9 @@ def recommend(
             report = analyze_link(link, prof, settings=settings, gateway=client)
     except (GitHubAPIError, UnsupportedLinkError, ValueError) as exc:
         console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(1)
+    except Exception as exc:  # model/API failures stay readable, never a traceback wall
+        console.print(f"[red]error:[/red] analysis failed: {exc}")
         raise typer.Exit(1)
 
     if isinstance(report, RepoReport):

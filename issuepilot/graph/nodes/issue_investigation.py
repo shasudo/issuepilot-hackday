@@ -7,6 +7,7 @@ from issuepilot.config import Settings
 from issuepilot.github.models import Issue
 from issuepilot.llm.factory import build_chat_model
 from issuepilot.llm.prompts import load_prompt
+from issuepilot.llm.retry import invoke_with_retry
 from issuepilot.models.issue_context import IssueContext, IssueContextAnalysis
 from issuepilot.observability.trace_store import TraceStore, trace
 
@@ -63,11 +64,12 @@ def investigate_issue(
         f"Comments:\n{comments_text or '(none)'}"
     )
 
+    messages = [("system", prompt.system), ("human", user_message)]
     if trace_store is not None:
         with trace(trace_store, "issue_investigation", prompt.version):
-            analysis = structured_model.invoke([("system", prompt.system), ("human", user_message)])
+            analysis = invoke_with_retry(structured_model, messages)
     else:
-        analysis = structured_model.invoke([("system", prompt.system), ("human", user_message)])
+        analysis = invoke_with_retry(structured_model, messages)
 
     referenced_numbers = extract_referenced_numbers(issue.body, comments_text, exclude=issue.number)
     return IssueContext(analysis=analysis, referenced_numbers=referenced_numbers)

@@ -6,6 +6,7 @@ from issuepilot.config import Settings
 from issuepilot.github.models import PullRequest
 from issuepilot.llm.factory import build_chat_model
 from issuepilot.llm.prompts import load_prompt
+from issuepilot.llm.retry import invoke_with_retry
 from issuepilot.models.pr_context import PRContext, PRReviewAnalysis
 from issuepilot.observability.trace_store import TraceStore, trace
 
@@ -49,11 +50,12 @@ def review_pull(
         f"Diff:\n{diff_text}"
     )
 
+    messages = [("system", prompt.system), ("human", user_message)]
     if trace_store is not None:
         with trace(trace_store, "pr_review", prompt.version):
-            analysis = structured_model.invoke([("system", prompt.system), ("human", user_message)])
+            analysis = invoke_with_retry(structured_model, messages)
     else:
-        analysis = structured_model.invoke([("system", prompt.system), ("human", user_message)])
+        analysis = invoke_with_retry(structured_model, messages)
 
     return PRContext(analysis=analysis)
 

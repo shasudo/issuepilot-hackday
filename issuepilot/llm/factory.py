@@ -28,7 +28,7 @@ def build_chat_model(settings: Settings | None = None, *, temperature: float = 0
             model=settings.anthropic_model,
             api_key=settings.anthropic_api_key,
             temperature=temperature,
-            timeout=60.0,
+            timeout=120.0,
         )
 
     if settings.llm_provider == "openai":
@@ -42,7 +42,7 @@ def build_chat_model(settings: Settings | None = None, *, temperature: float = 0
             model=settings.openai_model,
             api_key=settings.openai_api_key,
             temperature=temperature,
-            timeout=60.0,
+            timeout=120.0,
         )
 
     if settings.llm_provider == "google":
@@ -59,7 +59,7 @@ def build_chat_model(settings: Settings | None = None, *, temperature: float = 0
             model=settings.google_model,
             google_api_key=settings.google_api_key,
             temperature=temperature,
-            timeout=60.0,
+            timeout=120.0,
         )
 
     raise ValueError(f"unknown LLM provider: {settings.llm_provider}")

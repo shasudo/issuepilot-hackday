@@ -23,10 +23,15 @@ def test_google_provider_builds(tmp_path) -> None:
 
 
 def test_google_requires_key_and_model(tmp_path) -> None:
+    # Explicit Nones: a real .env in the repo root must not leak into these cases.
     with pytest.raises(ValueError, match="GOOGLE_API_KEY"):
-        build_chat_model(make_settings(tmp_path, llm_provider="google", google_model="m"))
+        build_chat_model(
+            make_settings(tmp_path, llm_provider="google", google_model="m", google_api_key=None)
+        )
     with pytest.raises(ValueError, match="GOOGLE_MODEL"):
-        build_chat_model(make_settings(tmp_path, llm_provider="google", google_api_key="k"))
+        build_chat_model(
+            make_settings(tmp_path, llm_provider="google", google_api_key="k", google_model=None)
+        )
 
 
 def test_openai_provider_builds(tmp_path) -> None:

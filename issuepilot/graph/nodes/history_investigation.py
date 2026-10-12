@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Protocol
 from issuepilot.config import Settings
 from issuepilot.llm.factory import build_chat_model
 from issuepilot.llm.prompts import load_prompt
+from issuepilot.llm.retry import invoke_with_retry
 from issuepilot.models.repo_context import HistoryEvidence, RelatedItem
 from issuepilot.observability.trace_store import TraceStore, trace
 
@@ -43,7 +44,8 @@ def investigate_history(
         f"Current issue summary:\n{issue_summary}\n\nReferenced items:\n" + "\n".join(lines)
     )
 
+    messages = [("system", prompt.system), ("human", user_message)]
     if trace_store is not None:
         with trace(trace_store, "history_investigation", prompt.version):
-            return structured_model.invoke([("system", prompt.system), ("human", user_message)])
-    return structured_model.invoke([("system", prompt.system), ("human", user_message)])
+            return invoke_with_retry(structured_model, messages)
+    return invoke_with_retry(structured_model, messages)
