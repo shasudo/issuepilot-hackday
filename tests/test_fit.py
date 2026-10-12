@@ -1,4 +1,4 @@
-from issuepilot.fit import score_fit
+from issuepilot.fit import quick_difficulty, score_fit
 from issuepilot.profile import UserProfile
 
 
@@ -56,3 +56,10 @@ def test_empty_profile_stays_neutral() -> None:
     )
     assert 35 <= result.score <= 75
     assert result.reasons
+
+
+def test_quick_difficulty_from_labels() -> None:
+    assert quick_difficulty(["good first issue"]) == "Easy"
+    assert quick_difficulty(["security"]) == "Difficult"
+    assert quick_difficulty(["bug"]) == "Medium"
+    assert quick_difficulty([]) == "Medium"

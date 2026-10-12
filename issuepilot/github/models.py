@@ -132,6 +132,7 @@ class RepoInfo(BaseModel):
     open_issues: int = 0
     updated_at: datetime | None = None
     html_url: str = ""
+    default_branch: str = ""
 
     @classmethod
     def from_api(cls, data: dict[str, Any], languages: list[str] | None = None) -> RepoInfo:
@@ -146,6 +147,7 @@ class RepoInfo(BaseModel):
             open_issues=data.get("open_issues_count", 0),
             updated_at=data.get("updated_at"),
             html_url=data.get("html_url", ""),
+            default_branch=data.get("default_branch", ""),
         )
 
 

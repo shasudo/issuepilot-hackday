@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from issuepilot.service import EntityReport
+from issuepilot.service import EntityReport, OrgReport, RepoReport
 
 app = typer.Typer(
     name="issuepilot",
@@ -27,13 +27,13 @@ def version() -> None:
 
 @app.command()
 def analyze(
-    link: str = typer.Argument(..., help="GitHub issue/PR link, or shorthand like owner/repo#123"),
+    link: str = typer.Argument(..., help="GitHub issue/PR/repo/org link, or shorthand like owner/repo#123"),
     profile: Path | None = typer.Option(None, "--profile", help="Path to a profile YAML file"),
     stack: str = typer.Option("", "--stack", help="Comma-separated tech stack (overrides profile)"),
     level: str | None = typer.Option(None, "--level", help="beginner, intermediate, or advanced"),
     interests: str = typer.Option("", "--interests", help="Comma-separated interests"),
 ) -> None:
-    """Analyze one issue or PR and print its personalized triage card."""
+    """Analyze one link and print its personalized triage card."""
     from pydantic import ValidationError
     from rich.panel import Panel
 
@@ -77,7 +77,12 @@ def analyze(
         console.print(f"[red]error:[/red] {exc}")
         raise typer.Exit(1)
 
-    _render_report(report)
+    if isinstance(report, RepoReport):
+        _render_repo(report)
+    elif isinstance(report, OrgReport):
+        _render_org(report)
+    else:
+        _render_report(report)
 
 
 def _render_report(report: EntityReport) -> None:
@@ -97,6 +102,8 @@ def _render_report(report: EntityReport) -> None:
         (report.bullets_title, report.bullets),
         (report.checklist_title, report.checklist),
         (report.notes_title, report.notes),
+        ("Where to look", report.repo_evidence),
+        ("Related history", report.related_history),
     ):
         if items:
             console.print(f"\n[bold]{heading}:[/bold]")
@@ -106,6 +113,42 @@ def _render_report(report: EntityReport) -> None:
         refs = ", ".join(f"#{n}" for n in report.referenced_numbers)
         console.print(f"\n[bold]Referenced:[/bold] {refs}")
     console.print(f"\n[dim]{report.reasoning}[/dim]")
+
+
+def _render_repo(report: RepoReport) -> None:
+    from rich.panel import Panel
+
+    repo = report.repo
+    console.print(
+        Panel(
+            f"[bold]{repo.full_name}[/bold]\n{repo.description or '(no description)'}\n"
+            f"Stars: {repo.stars} · Languages: {', '.join(repo.languages) or '(unknown)'}",
+            title="Repository",
+        )
+    )
+    console.print(f"[dim]Scanned {report.scanned} open issues:[/dim]")
+    for pick in report.picks:
+        console.print(
+            f"  #{pick.number} {pick.title}\n"
+            f"    {pick.difficulty} · {pick.fit.score}/100 {pick.fit.verdict} · {pick.url}"
+        )
+
+
+def _render_org(report: OrgReport) -> None:
+    from rich.panel import Panel
+
+    console.print(
+        Panel(
+            f"[bold]{report.org.login}[/bold]\n{report.org.description or '(no description)'}",
+            title="Organization",
+        )
+    )
+    console.print(f"[dim]Scanned {report.scanned_repos} repos:[/dim]")
+    for pick in report.picks:
+        console.print(
+            f"  {pick.repo}#{pick.number} {pick.title}\n"
+            f"    {pick.difficulty} · {pick.fit.score}/100 {pick.fit.verdict} · {pick.url}"
+        )
 
 
 if __name__ == "__main__":

@@ -78,3 +78,21 @@ def score_fit(
     else:
         verdict = "poor fit"
     return FitResult(score=final, verdict=verdict, reasons=reasons)
+
+
+_BEGINNER_LABELS = {"good first issue", "good-first-issue", "documentation", "docs", "trivial"}
+_HARD_LABELS = {"breaking", "security", "performance", "architecture", "design"}
+
+
+def quick_difficulty(labels: list[str]) -> Difficulty:
+    """Heuristic difficulty from labels alone — no LLM call.
+
+    Used to rank boards of issues cheaply; opening any pick runs the
+    full evidence-backed analysis for a real difficulty.
+    """
+    normalized = {label.lower() for label in labels}
+    if normalized & _BEGINNER_LABELS:
+        return "Easy"
+    if normalized & _HARD_LABELS:
+        return "Difficult"
+    return "Medium"

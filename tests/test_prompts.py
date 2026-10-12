@@ -18,3 +18,8 @@ def test_pr_prompt_loads() -> None:
 def test_missing_prompt_raises() -> None:
     with pytest.raises(FileNotFoundError):
         load_prompt("nope")
+
+
+def test_evidence_prompts_load() -> None:
+    assert "ranked_paths" in load_prompt("repo_investigation").system
+    assert "relevance" in load_prompt("history_investigation").system

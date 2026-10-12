@@ -14,31 +14,29 @@ from issuepilot.github.resolver import UnsupportedLinkError, resolve
 from issuepilot.observability.trace_store import TraceStore
 from issuepilot.profile import UserProfile, load_profile
 from issuepilot.rubric.scoring import ComplexityResult
-from issuepilot.service import EntityReport, analyze_link
+from issuepilot.service import EntityReport, OrgReport, RepoReport, analyze_link
 
 st.set_page_config(page_title="IssuePilot", layout="wide")
 
 SEED_ISSUE = "https://github.com/psf/requests/issues/7634"
 SEED_PR = "https://github.com/psf/requests/pull/7586"
+SEED_REPO = "https://github.com/psf/requests"
 SEED_BACKUP = "https://github.com/pytest-dev/pytest/issues/15124"
 
 DIFFICULTY_COLORS = {"Easy": "#34D399", "Medium": "#F59E0B", "Difficult": "#F87171"}
 PROFILES_DIR = Path(__file__).parent / "profiles"
+PRESETS = {
+    "Beginner Python": PROFILES_DIR / "beginner-python.yaml",
+    "Advanced Web": PROFILES_DIR / "advanced-web.yaml",
+}
 
 
 def _profile_from_sidebar() -> UserProfile:
     st.sidebar.header("Your profile")
-    preset = st.sidebar.selectbox(
-        "Preset", ["Beginner Python", "Advanced Web", "Custom"], key="preset"
-    )
-    if preset != "Custom":
-        filename = "beginner-python.yaml" if preset == "Beginner Python" else "advanced-web.yaml"
-        base = load_profile(PROFILES_DIR / filename)
-    else:
-        base = UserProfile()
-    level = st.sidebar.selectbox(
-        "Level", ["beginner", "intermediate", "advanced"], index=["beginner", "intermediate", "advanced"].index(base.level)
-    )
+    preset = st.sidebar.selectbox("Preset", ["Beginner Python", "Advanced Web", "Custom"])
+    base = load_profile(PRESETS[preset]) if preset in PRESETS else UserProfile()
+    levels = ["beginner", "intermediate", "advanced"]
+    level = st.sidebar.selectbox("Level", levels, index=levels.index(base.level))
     stack = st.sidebar.text_input("Tech stack (comma-separated)", ", ".join(base.tech_stack))
     languages = st.sidebar.text_input("Languages", ", ".join(base.languages))
     interests = st.sidebar.text_input("Interests", ", ".join(base.interests))
@@ -52,8 +50,12 @@ def _profile_from_sidebar() -> UserProfile:
     )
 
 
+def _run_cached(link: str, profile: UserProfile) -> EntityReport | RepoReport | OrgReport:
+    return _cached_analyze(link, profile.model_dump_json())
+
+
 @st.cache_data(show_spinner=False)
-def _cached_analyze(link: str, profile_json: str) -> EntityReport:
+def _cached_analyze(link: str, profile_json: str) -> EntityReport | RepoReport | OrgReport:
     settings = get_settings()
     profile = UserProfile.model_validate_json(profile_json)
     with GitHubClient(settings) as gateway:
@@ -74,7 +76,7 @@ def _pill(label: str, value: str, color: str) -> str:
     )
 
 
-def _render_report(report: EntityReport) -> None:
+def _render_entity(report: EntityReport) -> None:
     assert report.complexity is not None and report.fit is not None
     complexity: ComplexityResult = report.complexity
     fit: FitResult = report.fit
@@ -93,10 +95,7 @@ def _render_report(report: EntityReport) -> None:
             unsafe_allow_html=True,
         )
     with col_b:
-        st.markdown(
-            _pill("Fit", f"{fit.score}/100 · {fit.verdict}", "#F59E0B"),
-            unsafe_allow_html=True,
-        )
+        st.markdown(_pill("Fit", f"{fit.score}/100 · {fit.verdict}", "#F59E0B"), unsafe_allow_html=True)
     st.progress(min(max(fit.score, 0), 100))
 
     with st.expander("Why this fits you", expanded=True):
@@ -106,6 +105,8 @@ def _render_report(report: EntityReport) -> None:
         (report.bullets_title, report.bullets),
         (report.checklist_title, report.checklist),
         (report.notes_title, report.notes),
+        ("Where to look", report.repo_evidence),
+        ("Related history", report.related_history),
     ):
         if items:
             with st.expander(heading):
@@ -117,19 +118,53 @@ def _render_report(report: EntityReport) -> None:
     st.caption(report.reasoning)
 
 
-def main() -> None:
-    profile = _profile_from_sidebar()
-    if st.sidebar.button("Clear result cache"):
-        st.cache_data.clear()
+def _render_repo(report: RepoReport, picks_limit: int = 8) -> None:
+    repo = report.repo
+    st.markdown(f"### [{repo.full_name}]({repo.html_url})")
+    if repo.description:
+        st.write(repo.description)
+    st.caption(
+        f"Stars: {repo.stars} · Languages: {', '.join(repo.languages) or 'unknown'} · "
+        f"Scanned {report.scanned} open issues"
+    )
+    if not report.picks:
+        st.info("No open issues found.")
+        return
+    for pick in report.picks[:picks_limit]:
+        st.markdown(f"**[#{pick.number} {pick.title}]({pick.url})**")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown(
+                _pill("Difficulty", pick.difficulty, DIFFICULTY_COLORS[pick.difficulty]),
+                unsafe_allow_html=True,
+            )
+        with col_b:
+            st.markdown(
+                _pill("Fit", f"{pick.fit.score} · {pick.fit.verdict}", "#F59E0B"),
+                unsafe_allow_html=True,
+            )
 
-    st.title("IssuePilot")
-    st.caption("Paste any GitHub issue or PR link. Get a triage card tuned to your profile.")
+
+def _render_org(report: OrgReport) -> None:
+    st.markdown(f"### [{report.org.login}]({report.org.html_url})")
+    if report.org.description:
+        st.write(report.org.description)
+    st.caption(f"Scanned {report.scanned_repos} repos")
+    for pick in report.picks:
+        st.markdown(f"**[{pick.repo}#{pick.number} {pick.title}]({pick.url})**")
+        st.caption(f"{pick.difficulty} · {pick.fit.score}/100 {pick.fit.verdict}")
+
+
+def _analyze_tab(profile: UserProfile) -> None:
+    st.caption("Paste any GitHub issue, PR, repo, or org link. Get a card tuned to your profile.")
 
     if "link" not in st.session_state:
         st.session_state.link = ""
-    link = st.text_input("GitHub link", key="link", placeholder="https://github.com/owner/repo/issues/123")
+    link = st.text_input(
+        "GitHub link", key="link", placeholder="https://github.com/owner/repo/issues/123"
+    )
 
-    seed_col_a, seed_col_b, go_col = st.columns([1, 1, 2])
+    seed_col_a, seed_col_b, seed_col_c, go_col = st.columns([1, 1, 1, 2])
     with seed_col_a:
         if st.button("Seeded issue"):
             st.session_state.link = SEED_ISSUE
@@ -138,6 +173,11 @@ def main() -> None:
     with seed_col_b:
         if st.button("Seeded PR"):
             st.session_state.link = SEED_PR
+            st.session_state.run = True
+            st.rerun()
+    with seed_col_c:
+        if st.button("Seeded repo"):
+            st.session_state.link = SEED_REPO
             st.session_state.run = True
             st.rerun()
     with go_col:
@@ -163,7 +203,7 @@ def main() -> None:
                 resolved = resolve(link.strip(), probe)
             st.write(f"Found {resolved.kind}: {resolved.label}")
             st.write("Fetching from GitHub and running analysis…")
-            report = _cached_analyze(link.strip(), profile.model_dump_json())
+            report = _run_cached(link.strip(), profile)
             status.update(label="Done", state="complete")
     except UnsupportedLinkError as exc:
         st.error(str(exc))
@@ -171,15 +211,79 @@ def main() -> None:
     except GitHubAPIError as exc:
         st.error(f"{exc} — check the link visibility and your GITHUB_TOKEN.")
         return
-    except ValueError as exc:
-        st.info(str(exc))
-        return
     except Exception as exc:  # model/API failures stay readable, never a traceback wall
         st.error(f"Analysis failed: {exc}")
         return
 
-    _render_report(report)
+    if isinstance(report, RepoReport):
+        _render_repo(report)
+    elif isinstance(report, OrgReport):
+        _render_org(report)
+    else:
+        _render_entity(report)
     st.caption(f"Backup demo link: {SEED_BACKUP}")
+
+
+def _compare_tab() -> None:
+    st.caption("Same repo, two profiles — see how the top picks change.")
+    repo_link = st.text_input("Repo link", value=SEED_REPO, key="compare_link")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        preset_a = st.selectbox("Profile A", list(PRESETS), index=0, key="preset_a")
+    with col_b:
+        preset_b = st.selectbox("Profile B", list(PRESETS), index=1, key="preset_b")
+
+    if not st.button("Compare", type="primary"):
+        return
+    if not repo_link.strip():
+        st.warning("Paste a repo link first.")
+        return
+
+    try:
+        get_settings()
+    except ValidationError:
+        st.error("Missing config — copy .env.example to .env and set GITHUB_TOKEN.")
+        return
+
+    try:
+        with st.spinner("Ranking for both profiles…"):
+            profile_a = load_profile(PRESETS[preset_a])
+            profile_b = load_profile(PRESETS[preset_b])
+            report_a = _run_cached(repo_link.strip(), profile_a)
+            report_b = _run_cached(repo_link.strip(), profile_b)
+    except UnsupportedLinkError as exc:
+        st.error(str(exc))
+        return
+    except GitHubAPIError as exc:
+        st.error(f"{exc} — check the link visibility and your GITHUB_TOKEN.")
+        return
+    except Exception as exc:
+        st.error(f"Compare failed: {exc}")
+        return
+
+    if not isinstance(report_a, RepoReport) or not isinstance(report_b, RepoReport):
+        st.warning("Compare needs a repo link.")
+        return
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.subheader(profile_a.display_name)
+        _render_repo(report_a, picks_limit=5)
+    with col_b:
+        st.subheader(profile_b.display_name)
+        _render_repo(report_b, picks_limit=5)
+
+
+def main() -> None:
+    profile = _profile_from_sidebar()
+    if st.sidebar.button("Clear result cache"):
+        st.cache_data.clear()
+
+    st.title("IssuePilot")
+    analyze_tab, compare_tab = st.tabs(["Analyze", "Compare"])
+    with analyze_tab:
+        _analyze_tab(profile)
+    with compare_tab:
+        _compare_tab()
 
 
 if __name__ == "__main__":

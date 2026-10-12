@@ -1,8 +1,8 @@
 # IssuePilot
 
-Universal GitHub contribution assistant: paste any GitHub link (issue, PR — repo and org
-breadth landing in M3), add your context (tech stack, skill level, interests), and get a
-personalized triage card: what it is, how hard it is, whether it fits you, where to start.
+Universal GitHub contribution assistant: paste any GitHub link (issue, PR, repo, or org),
+add your context (tech stack, skill level, interests), and get a personalized triage card:
+what it is, how hard it is, whether it fits you, where to start.
 
 Built fresh for Hacktoberfest Hack Day 2026 (NIAT-KKH × MLH), Track 1: Best Open-Source AI
 Project. Inspired by a prior private prototype; every line here was written for the Hack Day.
@@ -90,9 +90,9 @@ Profiles: `profiles/beginner-python.yaml`, `profiles/advanced-web.yaml`.
 
 ## Project Status
 
-- M0–M2 (done): scaffold, GitHub layer + resolver, issue/PR analysis + fit + web UI
-- M3 (next): repo/org flows, repository + history evidence agents, Compare view
-- M4: LangGraph orchestration, opportunity boards, markdown export
+- M0–M3 (done): scaffold, GitHub layer + resolver, issue/PR analysis + fit, repo/org
+  flows, evidence agents, tabbed web UI (Analyze + Compare)
+- M4 (next): LangGraph orchestration, opportunity boards, markdown export
 - M5: demo lock, Agent Skill wrapper, submission
 
 ## Team Members

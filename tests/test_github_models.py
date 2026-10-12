@@ -96,6 +96,14 @@ def test_repo_from_api() -> None:
     assert repo.topics == ["ai"]
 
 
+def test_repo_default_branch() -> None:
+    repo = RepoInfo.from_api(
+        {"owner": {"login": "o"}, "name": "r", "full_name": "o/r", "default_branch": "main"}
+    )
+    assert repo.default_branch == "main"
+    assert RepoInfo(owner="o", name="r", full_name="o/r").default_branch == ""
+
+
 def test_org_from_api() -> None:
     org = OrgInfo.from_api({"login": "o", "name": None, "public_repos": 4})
     assert org.name == ""

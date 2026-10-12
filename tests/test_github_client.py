@@ -192,3 +192,20 @@ def test_persistent_server_error(client) -> None:
     respx.get(f"{API}/repos/o/r/issues/1").mock(return_value=httpx.Response(500))
     with pytest.raises(GitHubAPIError):
         client.get_issue("o", "r", 1)
+
+
+@respx.mock
+def test_list_repo_tree_filters_blobs(client) -> None:
+    respx.get(f"{API}/repos/o/r/git/trees/main", params={"recursive": "1"}).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "tree": [
+                    {"path": "a.py", "type": "blob"},
+                    {"path": "docs", "type": "tree"},
+                ],
+                "truncated": False,
+            },
+        )
+    )
+    assert client.list_repo_tree("o", "r", "main") == ["a.py"]

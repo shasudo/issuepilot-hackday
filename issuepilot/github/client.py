@@ -124,6 +124,13 @@ class GitHubClient:
         languages = self._get(f"/repos/{owner}/{repo}/languages")
         return RepoInfo.from_api(raw_repo, sorted(languages.keys()))
 
+    def list_repo_tree(self, owner: str, repo: str, branch: str, limit: int = 2000) -> list[str]:
+        """Blob paths on a branch, capped. The API's truncated flag is ignored
+        by design: evidence ranking works fine on a capped prefix."""
+        data = self._get(f"/repos/{owner}/{repo}/git/trees/{branch}", params={"recursive": "1"})
+        paths = [item["path"] for item in data.get("tree", []) if item.get("type") == "blob"]
+        return paths[:limit]
+
     def fetch_org(self, org: str) -> OrgInfo:
         return OrgInfo.from_api(self._get(f"/orgs/{org}"))
 
