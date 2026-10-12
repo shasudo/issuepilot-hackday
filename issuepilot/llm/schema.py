@@ -49,3 +49,13 @@ def flatten_schema(model: type[BaseModel]) -> dict[str, Any]:
         return node
 
     return _inline(schema)
+
+
+def bind_structured(model, schema: dict):
+    """Bind a flat schema with native JSON-schema enforcement.
+
+    The method is explicit (never the provider default): OpenAI and
+    Anthropic default to function calling, which requires a top-level
+    title that our Gemma-safe stripped schemas deliberately omit.
+    """
+    return model.with_structured_output(schema, method="json_schema")

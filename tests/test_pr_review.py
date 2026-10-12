@@ -38,8 +38,9 @@ class StubModel:
     def __init__(self, analysis: PRReviewAnalysis) -> None:
         self.invoker = StubInvoker(analysis)
 
-    def with_structured_output(self, schema) -> StubInvoker:
+    def with_structured_output(self, schema, **kwargs) -> StubInvoker:
         assert isinstance(schema, dict)
+        assert kwargs == {"method": "json_schema"}
         return self.invoker
 
 

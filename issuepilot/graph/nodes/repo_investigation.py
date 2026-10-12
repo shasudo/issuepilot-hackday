@@ -6,7 +6,7 @@ from issuepilot.config import Settings
 from issuepilot.llm.factory import build_chat_model
 from issuepilot.llm.prompts import load_prompt
 from issuepilot.llm.retry import invoke_with_retry
-from issuepilot.llm.schema import flatten_schema
+from issuepilot.llm.schema import bind_structured, flatten_schema
 from issuepilot.models.repo_context import RepoEvidence
 from issuepilot.observability.trace_store import TraceStore, trace
 
@@ -33,7 +33,7 @@ def prioritize_paths(paths: list[str], limit: int = MAX_TREE_PATHS) -> tuple[lis
 class StructuredChatModel(Protocol):
     """What this node needs from a model — tests inject a stub."""
 
-    def with_structured_output(self, schema: dict) -> _StructuredInvoker: ...
+    def with_structured_output(self, schema: dict, *, method: str) -> _StructuredInvoker: ...
 
 
 class _StructuredInvoker(Protocol):
@@ -50,7 +50,7 @@ def investigate_repo(
 ) -> RepoEvidence:
     prompt = load_prompt("repo_investigation")
     model = chat_model or build_chat_model(settings)
-    structured_model = model.with_structured_output(flatten_schema(RepoEvidence))
+    structured_model = bind_structured(model, flatten_schema(RepoEvidence))
 
     shown, omitted = prioritize_paths(tree_paths)
     tree_text = "\n".join(shown)

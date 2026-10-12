@@ -16,8 +16,9 @@ class StubModel:
     def __init__(self, evidence: RepoEvidence) -> None:
         self.invoker = StubInvoker(evidence)
 
-    def with_structured_output(self, schema) -> StubInvoker:
+    def with_structured_output(self, schema, **kwargs) -> StubInvoker:
         assert isinstance(schema, dict)
+        assert kwargs == {"method": "json_schema"}
         return self.invoker
 
 

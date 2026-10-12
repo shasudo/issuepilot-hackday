@@ -33,8 +33,9 @@ class StubModel:
     def __init__(self, analysis) -> None:
         self.analysis = analysis
 
-    def with_structured_output(self, schema):
+    def with_structured_output(self, schema, **kwargs):
         assert isinstance(schema, dict)
+        assert kwargs == {"method": "json_schema"}
         return StubInvoker(self.analysis)
 
 
@@ -44,7 +45,8 @@ class SchemaStub:
     def __init__(self, by_name: dict) -> None:
         self.by_name = by_name
 
-    def with_structured_output(self, schema):
+    def with_structured_output(self, schema, **kwargs):
+        assert kwargs == {"method": "json_schema"}
         props = schema.get("properties", {})
         if "ranked_paths" in props:
             key = "RepoEvidence"

@@ -6,7 +6,7 @@ from issuepilot.config import Settings
 from issuepilot.llm.factory import build_chat_model
 from issuepilot.llm.prompts import load_prompt
 from issuepilot.llm.retry import invoke_with_retry
-from issuepilot.llm.schema import flatten_schema
+from issuepilot.llm.schema import bind_structured, flatten_schema
 from issuepilot.models.repo_context import HistoryEvidence, RelatedItem
 from issuepilot.observability.trace_store import TraceStore, trace
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 class StructuredChatModel(Protocol):
     """What this node needs from a model — tests inject a stub."""
 
-    def with_structured_output(self, schema: dict) -> _StructuredInvoker: ...
+    def with_structured_output(self, schema: dict, *, method: str) -> _StructuredInvoker: ...
 
 
 class _StructuredInvoker(Protocol):
@@ -34,7 +34,7 @@ def investigate_history(
 ) -> HistoryEvidence:
     prompt = load_prompt("history_investigation")
     model = chat_model or build_chat_model(settings)
-    structured_model = model.with_structured_output(flatten_schema(HistoryEvidence))
+    structured_model = bind_structured(model, flatten_schema(HistoryEvidence))
 
     lines = [
         f"#{item.number} [{item.state}] {item.title}"
