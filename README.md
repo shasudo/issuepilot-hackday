@@ -37,9 +37,11 @@ the model only does qualitative judgment — and every model call is traced.
 
 ## AI / Partner Technology Used
 
-- **Open-weight model** (Hack Day default) selected via `LLM_PROVIDER` + `GOOGLE_MODEL` in
-  `.env` — use the organizer-confirmed model ID. Anthropic/OpenAI providers also supported
-  for comparison, but the open-weight path is the product.
+- **Open-weight model at the center**: the demo runs `openai/gpt-oss-120b` (open weights)
+  via Groq (`LLM_PROVIDER=groq` in `.env`). The provider factory also supports the
+  organizer-confirmed Gemma 4 ID via Google (`GOOGLE_MODEL`) — one line switches back.
+  Anthropic/OpenAI providers exist for comparison, but an open-weight model is always
+  the product's core.
 - **Structured outputs throughout** (`with_structured_output` + Pydantic schemas) — the
   product never parses free-text model output.
 - **Prompts as versioned data** (`config/prompts/v1/*.yaml`) so tuning is a diff, not a deploy.
