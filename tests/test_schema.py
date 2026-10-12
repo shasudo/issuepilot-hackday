@@ -6,7 +6,8 @@ from issuepilot.models.repo_context import HistoryEvidence, RepoEvidence
 
 def _assert_flat(node) -> None:
     if isinstance(node, dict):
-        assert "$ref" not in node and "$defs" not in node and "allOf" not in node
+        for banned in ("$ref", "$defs", "allOf", "title", "description"):
+            assert banned not in node
         for value in node.values():
             _assert_flat(value)
     elif isinstance(node, list):

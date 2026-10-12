@@ -8,12 +8,13 @@ _REF_PREFIX = "#/$defs/"
 
 
 def flatten_schema(model: type[BaseModel]) -> dict[str, Any]:
-    """Return the model's JSON schema with $defs inlined.
+    """Return a minimal equivalent of the model's JSON schema.
 
-    Hosted Gemma rejects pydantic-style $ref schemas on real prompts
-    (500 INTERNAL) while accepting the equivalent inline schema, so
-    nodes send the flattened form and validate the result back into
-    the Pydantic model. Semantically identical for validation.
+    Hosted Gemma rejects pydantic-style schemas on real prompts: $refs
+    500 and title/description metadata hangs generation. The stripped
+    inline form (types + structure only) works in seconds, so nodes send
+    it and validate the result back into the Pydantic model. The prompt
+    text already explains every field, so nothing is lost.
     """
     schema = model.model_json_schema()
     defs = schema.pop("$defs", {})
@@ -27,9 +28,15 @@ def flatten_schema(model: type[BaseModel]) -> dict[str, Any]:
             if "$ref" in node:
                 base = _resolve(node["$ref"])
                 assert isinstance(base, dict)
-                rest = {key: _inline(value) for key, value in node.items() if key != "$ref"}
+                rest = {
+                    key: _inline(value)
+                    for key, value in node.items()
+                    if key not in ("$ref", "title", "description")
+                }
                 return {**base, **rest}
-            merged = dict(node)
+            merged = {
+                key: value for key, value in node.items() if key not in ("title", "description")
+            }
             nested = merged.pop("allOf", None)
             if isinstance(nested, list) and len(nested) == 1 and isinstance(nested[0], dict) and "$ref" in nested[0]:
                 base = _resolve(nested[0]["$ref"])
