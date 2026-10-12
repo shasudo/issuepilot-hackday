@@ -20,6 +20,14 @@ def test_google_provider_builds(tmp_path) -> None:
     )
     model = build_chat_model(settings)
     assert model.model == "test-model"
+    assert model.reasoning_effort is None
+
+
+def test_gemma_models_get_minimal_thinking(tmp_path) -> None:
+    settings = make_settings(
+        tmp_path, llm_provider="google", google_api_key="k", google_model="gemma-4-26b-a4b-it"
+    )
+    assert build_chat_model(settings).reasoning_effort == "minimal"
 
 
 def test_google_requires_key_and_model(tmp_path) -> None:

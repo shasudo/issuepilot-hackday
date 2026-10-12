@@ -55,11 +55,20 @@ def build_chat_model(settings: Settings | None = None, *, temperature: float = 0
             )
         from langchain_google_genai import ChatGoogleGenerativeAI
 
+        # Hosted Gemma thinks at length by default (~90s+ on our schemas, past
+        # the server deadline). Minimal thinking keeps structured extraction
+        # to seconds. Only Gemma IDs accept this setting, hence the guard.
+        thinking = (
+            {"reasoning_effort": "minimal"}
+            if (settings.google_model or "").startswith("gemma")
+            else {}
+        )
         return ChatGoogleGenerativeAI(
             model=settings.google_model,
             google_api_key=settings.google_api_key,
             temperature=temperature,
             timeout=120.0,
+            **thinking,  # type: ignore[arg-type]
         )
 
     raise ValueError(f"unknown LLM provider: {settings.llm_provider}")
