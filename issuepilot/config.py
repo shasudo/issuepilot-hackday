@@ -17,15 +17,17 @@ class Settings(BaseSettings):
     github_token: str
     github_api_base: str = "https://api.github.com"
 
-    llm_provider: Literal["anthropic", "openai", "google", "openrouter"] = "google"
+    llm_provider: Literal["anthropic", "openai", "google", "openrouter", "groq"] = "google"
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
     google_api_key: str | None = None
     openrouter_api_key: str | None = None
+    groq_api_key: str | None = None
     anthropic_model: str | None = None
     openai_model: str | None = None
     google_model: str | None = None
     openrouter_model: str | None = None
+    groq_model: str | None = None
 
     cache_db_path: Path = Path(".issuepilot/cache.db")
     trace_db_path: Path = Path(".issuepilot/traces.db")

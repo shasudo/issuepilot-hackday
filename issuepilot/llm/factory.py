@@ -63,6 +63,23 @@ def build_chat_model(settings: Settings | None = None, *, temperature: float = 0
             timeout=120.0,
         )
 
+    if settings.llm_provider == "groq":
+        if not settings.groq_api_key:
+            raise ValueError("GROQ_API_KEY is required when LLM_PROVIDER=groq")
+        if not settings.groq_model:
+            raise ValueError("GROQ_MODEL is required when LLM_PROVIDER=groq")
+        from langchain_openai import ChatOpenAI
+
+        # Groq is OpenAI-compatible and serves open-weight models with a
+        # generous free tier. No thinking controls (Gemini-API-specific).
+        return ChatOpenAI(
+            model=settings.groq_model,
+            api_key=settings.groq_api_key,
+            base_url="https://api.groq.com/openai/v1",
+            temperature=temperature,
+            timeout=120.0,
+        )
+
     if settings.llm_provider == "google":
         if not settings.google_api_key:
             raise ValueError("GOOGLE_API_KEY is required when LLM_PROVIDER=google")

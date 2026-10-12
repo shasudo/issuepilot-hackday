@@ -68,6 +68,26 @@ def test_openrouter_provider_builds(tmp_path) -> None:
     assert "openrouter.ai" in str(model.openai_api_base)
 
 
+def test_groq_provider_builds(tmp_path) -> None:
+    settings = make_settings(
+        tmp_path, llm_provider="groq", groq_api_key="k", groq_model="test-model"
+    )
+    model = build_chat_model(settings)
+    assert model.model == "test-model"
+    assert "groq.com" in str(model.openai_api_base)
+
+
+def test_groq_requires_key_and_model(tmp_path) -> None:
+    with pytest.raises(ValueError, match="GROQ_API_KEY"):
+        build_chat_model(
+            make_settings(tmp_path, llm_provider="groq", groq_model="m", groq_api_key=None)
+        )
+    with pytest.raises(ValueError, match="GROQ_MODEL"):
+        build_chat_model(
+            make_settings(tmp_path, llm_provider="groq", groq_api_key="k", groq_model=None)
+        )
+
+
 def test_openrouter_requires_key_and_model(tmp_path) -> None:
     with pytest.raises(ValueError, match="OPENROUTER_API_KEY"):
         build_chat_model(
