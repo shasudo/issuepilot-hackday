@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from issuepilot.service import EntityReport, OrgReport, RepoReport
+from issuepilot.reports import EntityReport, OrgReport, RepoReport
 
 app = typer.Typer(
     name="issuepilot",
@@ -83,6 +83,59 @@ def analyze(
         _render_org(report)
     else:
         _render_report(report)
+
+
+@app.command()
+def recommend(
+    link: str = typer.Argument(..., help="GitHub repo or org link"),
+    profile: Path | None = typer.Option(None, "--profile", help="Path to a profile YAML file"),
+    stack: str = typer.Option("", "--stack", help="Comma-separated tech stack (overrides profile)"),
+    level: str | None = typer.Option(None, "--level", help="beginner, intermediate, or advanced"),
+    interests: str = typer.Option("", "--interests", help="Comma-separated interests"),
+) -> None:
+    """Rank the best-fit open issues across a repo or org for your profile."""
+    from pydantic import ValidationError
+
+    from issuepilot.config import get_settings
+    from issuepilot.github.client import GitHubAPIError, GitHubClient
+    from issuepilot.github.resolver import UnsupportedLinkError
+    from issuepilot.profile import load_profile
+    from issuepilot.service import analyze_link
+
+    try:
+        settings = get_settings()
+    except ValidationError:
+        console.print(
+            "[red]error:[/red] missing config — copy .env.example to .env and "
+            "fill in GITHUB_TOKEN."
+        )
+        raise typer.Exit(1)
+
+    prof = load_profile(profile)
+    if stack.strip():
+        prof.tech_stack = [item.strip() for item in stack.split(",") if item.strip()]
+    if interests.strip():
+        prof.interests = [item.strip() for item in interests.split(",") if item.strip()]
+    if level is not None:
+        if level not in ("beginner", "intermediate", "advanced"):
+            console.print("[red]error:[/red] --level must be beginner, intermediate, or advanced.")
+            raise typer.Exit(1)
+        prof.level = level  # type: ignore[assignment]
+
+    try:
+        with GitHubClient(settings) as client:
+            report = analyze_link(link, prof, settings=settings, gateway=client)
+    except (GitHubAPIError, UnsupportedLinkError, ValueError) as exc:
+        console.print(f"[red]error:[/red] {exc}")
+        raise typer.Exit(1)
+
+    if isinstance(report, RepoReport):
+        _render_repo(report)
+    elif isinstance(report, OrgReport):
+        _render_org(report)
+    else:
+        console.print("[red]error:[/red] recommend needs a repo or org link.")
+        raise typer.Exit(1)
 
 
 def _render_report(report: EntityReport) -> None:

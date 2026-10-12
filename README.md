@@ -67,11 +67,15 @@ uv run streamlit run app.py
 Then open the printed local URL (usually http://localhost:8501), pick a profile preset in
 the sidebar, and click a seeded example.
 
+Web UI tabs: Analyze (single card), Compare (two profiles, one repo), Boards (ranked
+opportunities + drill-down), Export (markdown download).
+
 CLI:
 
 ```bash
 uv run issuepilot analyze "https://github.com/owner/repo/issues/123" --stack python --level beginner
 uv run issuepilot analyze owner/repo#123 --profile profiles/beginner-python.yaml
+uv run issuepilot recommend psf/requests --stack python --level beginner
 ```
 
 Tests:
@@ -90,10 +94,9 @@ Profiles: `profiles/beginner-python.yaml`, `profiles/advanced-web.yaml`.
 
 ## Project Status
 
-- M0–M3 (done): scaffold, GitHub layer + resolver, issue/PR analysis + fit, repo/org
-  flows, evidence agents, tabbed web UI (Analyze + Compare)
-- M4 (next): LangGraph orchestration, opportunity boards, markdown export
-- M5: demo lock, Agent Skill wrapper, submission
+- M0–M4 (done): scaffold, GitHub layer + resolver, issue/PR analysis + fit, repo/org
+  flows, evidence agents, LangGraph orchestration, 4-tab web UI, markdown export
+- M5 (next): demo lock, Agent Skill wrapper, submission
 
 ## Team Members
 

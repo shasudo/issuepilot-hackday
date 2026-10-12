@@ -13,8 +13,10 @@ from issuepilot.github.client import GitHubAPIError, GitHubClient
 from issuepilot.github.resolver import UnsupportedLinkError, resolve
 from issuepilot.observability.trace_store import TraceStore
 from issuepilot.profile import UserProfile, load_profile
+from issuepilot.report.markdown import report_to_markdown
+from issuepilot.reports import EntityReport, OrgReport, RepoReport
 from issuepilot.rubric.scoring import ComplexityResult
-from issuepilot.service import EntityReport, OrgReport, RepoReport, analyze_link
+from issuepilot.service import analyze_link
 
 st.set_page_config(page_title="IssuePilot", layout="wide")
 
@@ -221,6 +223,7 @@ def _analyze_tab(profile: UserProfile) -> None:
         _render_org(report)
     else:
         _render_entity(report)
+    st.session_state.last_report = report
     st.caption(f"Backup demo link: {SEED_BACKUP}")
 
 
@@ -273,17 +276,85 @@ def _compare_tab() -> None:
         _render_repo(report_b, picks_limit=5)
 
 
+def _boards_tab(profile: UserProfile) -> None:
+    st.caption("Ranked opportunity boards across a repo or org — for your profile.")
+    link = st.text_input("Repo or org link", value=SEED_REPO, key="board_link")
+    if not st.button("Show board", type="primary"):
+        return
+    if not link.strip():
+        st.warning("Paste a link first.")
+        return
+
+    try:
+        get_settings()
+    except ValidationError:
+        st.error("Missing config — copy .env.example to .env and set GITHUB_TOKEN.")
+        return
+
+    try:
+        with st.spinner("Building board…"):
+            report = _run_cached(link.strip(), profile)
+    except UnsupportedLinkError as exc:
+        st.error(str(exc))
+        return
+    except GitHubAPIError as exc:
+        st.error(f"{exc} — check the link visibility and your GITHUB_TOKEN.")
+        return
+    except Exception as exc:
+        st.error(f"Board failed: {exc}")
+        return
+
+    if isinstance(report, RepoReport):
+        _render_repo(report)
+        picks = report.picks
+    elif isinstance(report, OrgReport):
+        _render_org(report)
+        picks = report.picks
+    else:
+        st.warning("Boards need a repo or org link — this one opened as a single card.")
+        _render_entity(report)
+        return
+    st.session_state.last_report = report
+
+    st.divider()
+    st.subheader("Drill down")
+    st.caption("Pick one to open its full card in the Analyze tab.")
+    for pick in picks:
+        if st.button(f"Analyze {pick.repo}#{pick.number}", key=f"drill-{pick.repo}-{pick.number}"):
+            st.session_state.link = pick.url
+            st.session_state.run = True
+            st.success("Loaded — switch to the Analyze tab.")
+
+
+def _export_tab() -> None:
+    st.caption("Download the latest analysis as markdown.")
+    report = st.session_state.get("last_report")
+    if report is None:
+        st.info("Run an analysis first — the export will appear here.")
+        return
+    text = report_to_markdown(report)
+    st.download_button("Download markdown", data=text, file_name="triage.md", mime="text/markdown")
+    with st.expander("Preview", expanded=True):
+        st.markdown(text)
+
+
 def main() -> None:
     profile = _profile_from_sidebar()
     if st.sidebar.button("Clear result cache"):
         st.cache_data.clear()
 
     st.title("IssuePilot")
-    analyze_tab, compare_tab = st.tabs(["Analyze", "Compare"])
+    analyze_tab, compare_tab, boards_tab, export_tab = st.tabs(
+        ["Analyze", "Compare", "Boards", "Export"]
+    )
     with analyze_tab:
         _analyze_tab(profile)
     with compare_tab:
         _compare_tab()
+    with boards_tab:
+        _boards_tab(profile)
+    with export_tab:
+        _export_tab()
 
 
 if __name__ == "__main__":
