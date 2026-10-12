@@ -1,6 +1,6 @@
 import pytest
 
-from issuepilot.llm.retry import invoke_with_retry, is_transient
+from issuepilot.llm.retry import _wait_time, invoke_with_retry, is_transient, retry_after_seconds
 
 
 class FakeStatusError(Exception):
@@ -42,3 +42,30 @@ def test_non_transient_raises_immediately() -> None:
     with pytest.raises(FakeStatusError):
         invoke_with_retry(invoker, [("human", "hi")])
     assert invoker.calls == 1
+
+
+class _Outcome:
+    def __init__(self, exc) -> None:
+        self._exc = exc
+
+    def exception(self):
+        return self._exc
+
+
+class _State:
+    def __init__(self, exc, attempt: int) -> None:
+        self.outcome = _Outcome(exc)
+        self.attempt_number = attempt
+
+
+def test_retry_after_parsed_from_quota_messages() -> None:
+    assert retry_after_seconds(RuntimeError("Please retry in 56.97s.")) == 56.97
+    assert retry_after_seconds(RuntimeError("{'retryDelay': '12s'}")) == 12.0
+    assert retry_after_seconds(RuntimeError("plain boom")) is None
+
+
+def test_wait_honors_server_delay_with_cap() -> None:
+    assert _wait_time(_State(RuntimeError("Please retry in 20s."), 1)) == 20.0
+    assert _wait_time(_State(RuntimeError("Please retry in 500s."), 1)) == 90.0
+    assert _wait_time(_State(RuntimeError("plain boom"), 1)) == 2.0
+    assert _wait_time(_State(RuntimeError("plain boom"), 2)) == 4.0

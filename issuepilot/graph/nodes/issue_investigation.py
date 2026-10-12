@@ -17,6 +17,10 @@ if TYPE_CHECKING:
 
 _REFERENCE_RE = re.compile(r"(?<!\w)#(\d+)")
 
+# Free-tier quota is 16K input tokens/min shared across all nodes: every
+# prompt stays small so a full analysis fits one quota window.
+MAX_COMMENTS_CHARS = 4000
+
 
 class StructuredChatModel(Protocol):
     """What this node needs from a model — tests inject a stub."""
@@ -58,6 +62,8 @@ def investigate_issue(
     structured_model = model.with_structured_output(flatten_schema(IssueContextAnalysis))
 
     comments_text = "\n\n".join(f"@{c.author}: {c.body}" for c in issue.comments)
+    if len(comments_text) > MAX_COMMENTS_CHARS:
+        comments_text = comments_text[:MAX_COMMENTS_CHARS] + "\n[older comments truncated]"
     user_message = (
         f"Title: {issue.title}\n"
         f"Labels: {', '.join(issue.labels) or 'none'}\n\n"

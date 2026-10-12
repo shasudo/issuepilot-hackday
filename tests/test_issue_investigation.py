@@ -78,3 +78,16 @@ def test_investigate_issue_uses_structured_output(tmp_path) -> None:
 def test_extract_referenced_numbers_dedupes_and_excludes() -> None:
     assert extract_referenced_numbers("see #3 and #3, also #1", exclude=1) == [3]
     assert extract_referenced_numbers(None, "") == []
+
+
+def test_long_comments_truncated() -> None:
+    from issuepilot.github.models import Comment
+
+    stub = StubModel(make_analysis())
+    issue = make_issue()
+    issue.comments = [
+        Comment(id=1, author="a", body="x" * 5000, created_at=issue.created_at)
+    ]
+    investigate_issue(issue, chat_model=stub)
+    assert stub.invoker.messages is not None
+    assert "[older comments truncated]" in stub.invoker.messages[1][1]

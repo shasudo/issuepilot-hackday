@@ -14,7 +14,8 @@ from issuepilot.observability.trace_store import TraceStore, trace
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
 
-MAX_DIFF_CHARS = 20000
+MAX_DIFF_CHARS = 12000
+MAX_COMMENTS_CHARS = 4000
 
 
 class StructuredChatModel(Protocol):
@@ -39,6 +40,8 @@ def review_pull(
     structured_model = model.with_structured_output(flatten_schema(PRReviewAnalysis))
 
     comments_text = "\n\n".join(f"@{c.author}: {c.body}" for c in pull.comments)
+    if len(comments_text) > MAX_COMMENTS_CHARS:
+        comments_text = comments_text[:MAX_COMMENTS_CHARS] + "\n[older comments truncated]"
     diff_text = _render_diff(pull)
     user_message = (
         f"Title: {pull.title}\n"

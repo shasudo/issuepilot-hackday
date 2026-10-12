@@ -13,7 +13,21 @@ from issuepilot.observability.trace_store import TraceStore, trace
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
 
-MAX_TREE_PATHS = 1500
+MAX_TREE_PATHS = 250
+
+_CODE_EXTENSIONS = (
+    ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".java", ".rb", ".php",
+    ".c", ".h", ".cpp", ".hpp", ".cs", ".swift", ".kt", ".kts", ".scala",
+    ".vue", ".svelte", ".sol", ".md", ".mdx", ".rst", ".txt", ".yaml", ".yml", ".toml",
+)
+
+
+def prioritize_paths(paths: list[str], limit: int = MAX_TREE_PATHS) -> tuple[list[str], int]:
+    """Code and docs first (stable order), capped — quota-friendly evidence."""
+    code = [path for path in paths if path.lower().endswith(_CODE_EXTENSIONS)]
+    rest = [path for path in paths if not path.lower().endswith(_CODE_EXTENSIONS)]
+    ordered = code + rest
+    return ordered[:limit], max(len(paths) - limit, 0)
 
 
 class StructuredChatModel(Protocol):
@@ -38,10 +52,10 @@ def investigate_repo(
     model = chat_model or build_chat_model(settings)
     structured_model = model.with_structured_output(flatten_schema(RepoEvidence))
 
-    shown = tree_paths[:MAX_TREE_PATHS]
+    shown, omitted = prioritize_paths(tree_paths)
     tree_text = "\n".join(shown)
-    if len(tree_paths) > MAX_TREE_PATHS:
-        tree_text += f"\n[... {len(tree_paths) - MAX_TREE_PATHS} more paths omitted]"
+    if omitted:
+        tree_text += f"\n[... {omitted} more paths omitted]"
     user_message = f"Issue summary:\n{issue_summary}\n\nRepository tree:\n{tree_text or 'empty'}"
 
     messages = [("system", prompt.system), ("human", user_message)]

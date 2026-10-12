@@ -1,4 +1,4 @@
-from issuepilot.graph.nodes.repo_investigation import investigate_repo
+from issuepilot.graph.nodes.repo_investigation import investigate_repo, prioritize_paths
 from issuepilot.models.repo_context import RankedPath, RepoEvidence
 
 
@@ -37,3 +37,9 @@ def test_huge_tree_is_capped() -> None:
     investigate_repo("x", [f"f{i}.py" for i in range(3000)], chat_model=stub)
     assert stub.invoker.messages is not None
     assert "more paths omitted" in stub.invoker.messages[1][1]
+
+
+def test_prioritize_paths_prefers_code() -> None:
+    shown, omitted = prioritize_paths(["a.png", "b.py", "c.mp4", "d.md"], limit=3)
+    assert shown == ["b.py", "d.md", "a.png"]
+    assert omitted == 1

@@ -3,7 +3,8 @@
 ## Pre-flight (before stage)
 
 - [ ] `uv sync` done, `.env` has `GITHUB_TOKEN` + model key + organizer model ID
-- [ ] Prime the cache: click Seeded issue, Seeded PR, Seeded repo once each
+- [ ] Prime the cache: click Seeded issue, Seeded PR, Seeded repo once each,
+      spaced ~60s apart (free-tier quota is 16K input tokens/min)
 - [ ] Sidebar preset: Beginner Python. Backup link ready: pytest#15124
 - [ ] If the model API dies on stage: seeded results are cached — rerun from cache,
       then show the backup link. Last resort: Export tab markdown.
