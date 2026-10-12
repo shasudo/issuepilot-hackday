@@ -60,9 +60,9 @@ def investigate_issue(
     comments_text = "\n\n".join(f"@{c.author}: {c.body}" for c in issue.comments)
     user_message = (
         f"Title: {issue.title}\n"
-        f"Labels: {', '.join(issue.labels) or '(none)'}\n\n"
-        f"Body:\n{issue.body or '(empty)'}\n\n"
-        f"Comments:\n{comments_text or '(none)'}"
+        f"Labels: {', '.join(issue.labels) or 'none'}\n\n"
+        f"Body:\n{issue.body or 'empty'}\n\n"
+        f"Comments:\n{comments_text or 'none'}"
     )
 
     messages = [("system", prompt.system), ("human", user_message)]

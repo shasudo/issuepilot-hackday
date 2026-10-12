@@ -44,10 +44,10 @@ def review_pull(
         f"Title: {pull.title}\n"
         f"State: {pull.state}{' (draft)' if pull.draft else ''} | "
         f"{pull.base_branch} <- {pull.head_branch}\n"
-        f"Labels: {', '.join(pull.labels) or '(none)'}\n"
+        f"Labels: {', '.join(pull.labels) or 'none'}\n"
         f"Stats: +{pull.additions}/-{pull.deletions} across {pull.changed_files} files\n\n"
-        f"Description:\n{pull.body or '(empty)'}\n\n"
-        f"Comments:\n{comments_text or '(none)'}\n\n"
+        f"Description:\n{pull.body or 'empty'}\n\n"
+        f"Comments:\n{comments_text or 'none'}\n\n"
         f"Diff:\n{diff_text}"
     )
 

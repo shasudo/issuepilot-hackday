@@ -42,7 +42,7 @@ def investigate_repo(
     tree_text = "\n".join(shown)
     if len(tree_paths) > MAX_TREE_PATHS:
         tree_text += f"\n[... {len(tree_paths) - MAX_TREE_PATHS} more paths omitted]"
-    user_message = f"Issue summary:\n{issue_summary}\n\nRepository tree:\n{tree_text or '(empty)'}"
+    user_message = f"Issue summary:\n{issue_summary}\n\nRepository tree:\n{tree_text or 'empty'}"
 
     messages = [("system", prompt.system), ("human", user_message)]
     if trace_store is not None:
